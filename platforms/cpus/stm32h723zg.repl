@@ -1,0 +1,5 @@
+using "platforms/cpus/stm32h7xxxg.repl"
+//using "platforms/cpus/stm32h72x.repl"
+//using "platforms/cpus/stm32h7x3.repl"
+//using "platforms/cpus/stm32h7xxz.repl"
+using "platforms/cpus/stm32h7_rm0468.repl"

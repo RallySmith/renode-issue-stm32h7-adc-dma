@@ -1,0 +1,94 @@
+// RM0468 rev3 STM32H723/733 STM32H725/735 STM32H730
+using "platforms/cpus/stm32h7.repl"
+
+// SRAM1 (16K) @ sysbus 0x30000000
+// SRAM2 (16K) @ sysbus 0x30004000
+sram: Memory.MappedMemory @ sysbus 0x30000000
+    size: 0x00008000
+
+// SRAM4 (16K)
+sram4: Memory.MappedMemory @ sysbus 0x38000000
+    size: 0x00004000
+
+// Flash
+flash: MTD.STM32H7_FlashController @ sysbus 0x52002000
+    flash1: flash0
+    flash2: flash0
+// TODO: The above is a cheat since the 1.14.0 Renode STM32H7_FlashController expects 2 banks; even though RM0468 only provides 1 bank
+// TODO: The model should be updated to allow for single bank devices only providing a flash1 mapping
+
+// AXI (128K) @ sysbus 0x24000000
+// AXI-shared-with-ITCM (192K) @ sysbus 0x24020000
+axisram: Memory.MappedMemory @ sysbus 0x24000000
+    size: 0x50000
+
+// APB4 (D3)
+// 0x58006800 - 0x58006BFF  DTS
+
+// 0x58024800 - 0x58024BFF  PWR
+//pwr: Miscellaneous.STM32H7_PWR @ sysbus 0x58024800
+
+// AHB3 (D1)
+// 0x5200BC00 - 0x5200BFFF  OTFDEC2
+// 0x5200B800 - 0x5200BBFF  OTFDEC1
+// 0x5200B400 - 0x5200B7FF  OCTOSPI I/O
+// 0x5200B000 - 0x5200B3FF  OCTOSPI2
+// 0x5200A000 - 0x5200AFFF  OCTOSPI2
+// 0x52006000 - 0x52006FFF  OCTOSPI1
+// 0x52005000 - 0x52005FFF  OCTOSPI1
+
+// AHB2 (D2)
+// 0x48024400 - 0x48027FFF  CORDIC
+// 0x48024000 - 0x480243FF  FMAC
+// 0x48020400 - 0x480207FF  PSSI
+
+// APB2 (D1)
+// 0x40017800 - 0x40017FFF  DFSDM1
+
+// 0x40011C00 - 0x40011FFF  USART10
+usart10: UART.STM32F7_USART @ sysbus 0x40011C00
+    frequency: 125000000
+    IRQ -> nvic@156
+
+// 0x40011800 - 0x40011BFF  UART9
+uart9: UART.STM32F7_USART @ sysbus 0x40011800
+    frequency: 125000000
+    IRQ -> nvic@155
+
+// APB1 (D2)
+// 0x4000E400 - 0x4000E7FF  TIM24
+timer24: Timers.STM32_Timer @ sysbus <0x4000E400, +0x400>
+    initialLimit: 0xffffffff
+    frequency: 250000000
+    IRQ -> nvic@162
+
+// 0x4000E000 - 0x4000E3FF  TIM23
+timer23: Timers.STM32_Timer @ sysbus <0x4000E000, +0x400>
+    initialLimit: 0xffffffff
+    frequency: 250000000
+    IRQ -> nvic@161
+
+// 0x4000D400 - 0x4000D7FF  FDCAN3
+
+// 0x40006400 - 0x400067FF  I2C5
+//  dmamux1@124 i2c5_rx_dma
+//  dmamux1@125 i2c5_tx_dma
+i2c5: I2C.STM32F7_I2C @ sysbus 0x40006400
+    EventInterrupt -> nvic@157
+    ErrorInterrupt -> nvic@158
+
+sysbus:
+    init:
+        Tag <0x58006800, 0x58006BFF> "DTS"
+        Tag <0x5200BC00, 0x5200BFFF> "OTFDEC2"
+        Tag <0x5200B800, 0x5200BBFF> "OTFDEC1"
+        Tag <0x5200B400, 0x5200B7FF> "OCTOSPI I/O"
+        Tag <0x5200B000, 0x5200B3FF> "OCTOSPI2 delay block"
+        Tag <0x5200A000, 0x5200AFFF> "OCTOSPI2"
+        Tag <0x52006000, 0x52006FFF> "OCTOSPI1 delay block"
+        Tag <0x52005000, 0x52005FFF> "OCTOSPI1"
+        Tag <0x48024400, 0x48027FFF> "CORDIC"
+        Tag <0x48024000, 0x480243FF> "FMAC"
+        Tag <0x48020400, 0x480207FF> "PSSI"
+        Tag <0x40017800, 0x40017FFF> "DFSDM1"
+        Tag <0x4000D400, 0x4000D7FF> "FDCAN3"

@@ -2,4 +2,4 @@
 set -x
 set -e
 
-echo "This is my build artifact" > artifacts/build-result
+echo "Holding place" > artifacts/renode.log

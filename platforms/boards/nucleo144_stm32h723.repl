@@ -1,0 +1,2 @@
+// nucleo144_stm32h723_dsp
+using "platforms/cpus/stm32h723zg.repl"

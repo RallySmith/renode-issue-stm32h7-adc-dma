@@ -1,20 +1,46 @@
-# This is a sample RESC script.
-# Please change this file and test.robot to include all necessary steps to reproduce your issue.
-# Make this repository as self contained as possible.
-#
-
-$name?="Mi-V"
+:name: NUCLEO-H723ZG
+:description: This script runs application binaries on a nucleo144_stm32h723 board.
 
 using sysbus
+$name?="NUCLEO-H723ZG"
 mach create $name
-machine LoadPlatformDescription @platforms/boards/miv-board.repl
 
-$bin?=@https://dl.antmicro.com/projects/renode/shell-demo-miv.elf-s_803248-ea4ddb074325b2cc1aae56800d099c7cf56e592a
+path add $ORIGIN
 
-showAnalyzer uart
+machine LoadPlatformDescription $ORIGIN/platforms/boards/nucleo144_stm32h723.repl
+
+$logfile ?= $ORIGIN/artifacts/renode.log
+
+$app ?= @ecos_nucleo144_stm32h723_io_adc1
+
+showAnalyzer sysbus.usart3
+
+macro feedadc
+"""
+    sysbus.adc FeedSample 0xFFF 0 -1
+    sysbus.adc FeedSample 0x3A4 16 -1
+    sysbus.adc FeedSample 0x5C0 17 -1
+    sysbus.adc FeedSample 0x7FD 18 -1
+    sysbus.adc FeedSample 0xFFF 19 -1
+"""
+
+: Since the reset macro is executed automatically by renode on a CPU
+: reset we use startofday for the initial test setup, and allow reset
+: to be used to test firmware triggered (soft) CPU resets, e.g. to
+: test in-field firmware updates, watchdog events, etc.
+
+macro startofday
+"""
+    logFile $logfile
+    sysbus LoadELF $app
+"""
 
 macro reset
 """
-    sysbus LoadELF $bin
+    set flash_sp `sysbus ReadDoubleWord 0x08000000`
+    set flash_pc `sysbus ReadDoubleWord 0x08000004`
+    cpu SP $flash_sp
+    cpu PC $flash_pc
 """
-runMacro $reset
+
+runMacro $startofday
