@@ -26,7 +26,8 @@ axisram: Memory.MappedMemory @ sysbus 0x24000000
 // 0x58006800 - 0x58006BFF  DTS
 
 // 0x58024800 - 0x58024BFF  PWR
-//pwr: Miscellaneous.STM32H7_PWR @ sysbus 0x58024800
+pwr: Miscellaneous.STM32H7_PWR @ sysbus 0x58024800
+    stm32Family: "H72"
 
 // AHB3 (D1)
 // 0x5200BC00 - 0x5200BFFF  OTFDEC2
@@ -57,16 +58,18 @@ uart9: UART.STM32F7_USART @ sysbus 0x40011800
 
 // APB1 (D2)
 // 0x4000E400 - 0x4000E7FF  TIM24
-timer24: Timers.STM32_Timer @ sysbus <0x4000E400, +0x400>
+timer24: Timers.STM32_Timer_Fixed @ sysbus <0x4000E400, +0x400>
     initialLimit: 0xffffffff
     frequency: 250000000
     IRQ -> nvic@162
+    TRGO -> adc1@22
 
 // 0x4000E000 - 0x4000E3FF  TIM23
-timer23: Timers.STM32_Timer @ sysbus <0x4000E000, +0x400>
+timer23: Timers.STM32_Timer_Fixed @ sysbus <0x4000E000, +0x400>
     initialLimit: 0xffffffff
     frequency: 250000000
     IRQ -> nvic@161
+    TRGO -> adc1@21
 
 // 0x4000D400 - 0x4000D7FF  FDCAN3
 

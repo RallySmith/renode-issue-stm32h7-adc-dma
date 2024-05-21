@@ -4,7 +4,7 @@ Suite Teardown                Teardown
 Test Setup                    Reset Emulation
 Test Teardown                 Test Teardown
 Test Timeout                  20 seconds
-Resource                      ${RENODEKEYWORDS}
+Resource                      ${RENODEKEYWORDS}-
 
 *** Variables ***
 ${SCRIPT}                     ${CURDIR}/test.resc
@@ -23,4 +23,4 @@ Should Run Test Case
     Load Script
     Start Emulation
     Should Not Be In Log        sysbus: [cpu: 0x80016F0] ReadDoubleWord from non existing peripheral at 0x58024818.
-    INFO:<ADC test>
+    Wait For Line On Uart       PASS:<ADC test OK>      timeout=10

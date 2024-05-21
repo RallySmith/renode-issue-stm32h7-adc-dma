@@ -50,10 +50,32 @@ hsem: Miscellaneous.STM32H7_HardwareSemaphore @ sysbus 0x58026400
 // 0x58026000 - 0x580263FF  ADC3
 // ADC3 is 12-bit resolution at 5Msps // x256 oversampling // 16-bit data register
 // 16 external channels, 3 internal channels
-adc3: Analog.STM32F0_ADC @ sysbus 0x58026000
-    referenceVoltage: 3.3
-    externalEventFrequency: 1000
-    -> exti@75
+
+// 0x58026000 - 0x580263FF  ADC3
+// ADC3 is 12-bit resolution at 5Msps // x256 oversampling // 16-bit data register
+// 16 external channels, 3 internal channels
+
+adc3common: Analog.STM32H7_ADC_Common @ sysbus 0x58026300
+    ccrOnly: true
+// TODO: ideally would use the parent ADC controller "model" option
+
+adc3: Analog.STM32H7_ADC @ sysbus 0x58026000
+    commonPeripheral: adc3common
+    numberOfChannels: 19
+    maxResolution: 12
+    model: "MSv63820V3"
+    // TODO: DMAMUX2 DMA_REQID 0x11 is adc3_dma
+    IRQ-> nvic@127
+    // TODO:CONSIDER: instead of nvic@127 using: -> exti@75
+
+// 0x58025800 - 0x58025BFF  DMAMUX2
+dmamux2: DMA.STM32H7_DMAMUX @ sysbus <0x58025800, +0x0400>
+    numberOfOutRequestChannels: 8
+    numberOfRequestTriggerInputs: 32
+    numberOfSynchronisationInputs: 32
+    // NOTE: RM0468 rev3 Table117 and RM0433 rev7 Table120 say numberOfSynchronisationInputs 16 but respective Table123 and Table126 show 32 inputs
+    // TODO: DMAMUX2 channels 0..7 connected to BDMA channels 0..7
+    //[0-7] -> bdma@[0-7] // TODO: Error E12: Type 'Antmicro.Renode.Peripherals.DMA.STM32LDMA' does not implement IGPIOReceiver and cannot be a destination of interrupts.
 
 // 0x58025400 - 0x580257FF  BDMA
 bdma: DMA.STM32LDMA @ sysbus 0x58025400
@@ -257,17 +279,35 @@ rng: Miscellaneous.STM32F4_RNG @ sysbus 0x48021800
 
 // 0x40022000 - 0x400223FF  ADC1/ADC2
 // ADC1/2 are 16-bit resolution at 3.6Msps // x1024 oversampling // 32-bit data register
-adcM1S2: Analog.STM32F0_ADC @ sysbus 0x40022000
-    referenceVoltage: 3.3
-    externalEventFrequency: 1000
-    -> nvic@18
+
+adcM1S2common: Analog.STM32H7_ADC_Common @ sysbus 0x40022300
+
+// TODO: DMAMUX1 DMA_REQID 0x09 is adc1_dma
+// TODO:CONSIDER: Current direct mapping to allow easier initial bringup
+adc1: Analog.STM32H7_ADC @ sysbus 0x40022000
+    commonPeripheral: adcM1S2common
+    IRQ -> nvic@18
+    DMARequest -> dma2@5
+
+adc2: Analog.STM32H7_ADC @ sysbus 0x40022100
+    commonPeripheral: adcM1S2common
+    // TODO: DMAMUX1 DMA_REQID 0x10 being adc2_dma
+
+// 0x40020800 - 0x40020BFF  DMAMUX1
+dmamux1: DMA.STM32H7_DMAMUX @ sysbus <0x40020800, +0x0400>
+    numberOfOutRequestChannels: 16
+    numberOfSynchronisationInputs: 8
+    // TODO: DMAMUX1 channels 0..7  connected to DMA1 channels 0..7
+    [0-7] -> dma1@[0-7]
+    // TODO: DMAMUX1 channels 8..15 connected to DMA2 channels 0..7
+    [8-15] -> dma2@[0-7]
 
 // 0x40020400 - 0x400207FF  DMA2
-dma2: DMA.STM32DMA @ sysbus 0x40020400
+dma2: DMA.STM32DMA_Fixed @ sysbus 0x40020400
     [0-7] -> nvic@[56-60, 68-70]
 
 // 0x40020000 - 0x400203FF  DMA1
-dma1: DMA.STM32DMA @ sysbus 0x40020000
+dma1: DMA.STM32DMA_Fixed @ sysbus 0x40020000
     [0-7] -> nvic@[11-17, 47]
 
 // APB2 (D1)
@@ -278,22 +318,23 @@ spi5: SPI.STM32H7_SPI @ sysbus 0x40015000
     IRQ -> nvic@85
 
 // 0x40014800 - 0x40014BFF  TIM17
-timer17: Timers.STM32_Timer @ sysbus <0x40014800, +0x400>
+timer17: Timers.STM32_Timer_Fixed @ sysbus <0x40014800, +0x400>
     initialLimit: 0xffff
     frequency: 250000000
     IRQ -> nvic@118
 
 // 0x40014400 - 0x400147FF  TIM16
-timer16: Timers.STM32_Timer @ sysbus <0x40014400, +0x400>
+timer16: Timers.STM32_Timer_Fixed @ sysbus <0x40014400, +0x400>
     initialLimit: 0xffff
     frequency: 250000000
     IRQ -> nvic@117
 
 // 0x40014000 - 0x400143FF  TIM15
-timer15: Timers.STM32_Timer @ sysbus <0x40014000, +0x400>
+timer15: Timers.STM32_Timer_Fixed @ sysbus <0x40014000, +0x400>
     initialLimit: 0xffff
     frequency: 250000000
     IRQ -> nvic@116
+    TRGO -> adc1@14
 
 // 0x40013400 - 0x400137FF  SPI4
 spi4: SPI.STM32H7_SPI @ sysbus 0x40013400
@@ -314,17 +355,20 @@ usart1: UART.STM32F7_USART @ sysbus 0x40011000
     IRQ -> nvic@37
 
 // 0x40010400 - 0x400107FF  TIM8
-timer8: Timers.STM32_Timer @ sysbus <0x40010400, +0x400>
+timer8: Timers.STM32_Timer_Fixed @ sysbus <0x40010400, +0x400>
     initialLimit: 0xffff
     frequency: 250000000
     IRQ -> nvic@44
+    TRGO -> adc1@7
+    // CONSIDER:TRGO2: Timer1 has tim1_trgo2
 
 // 0x40010000 - 0x400103FF  TIM1
-timer1: Timers.STM32_Timer @ sysbus <0x40010000, +0x400>
+timer1: Timers.STM32_Timer_Fixed @ sysbus <0x40010000, +0x400>
     initialLimit: 0xffff
 //    frequency: 60000000
     frequency: 250000000
     IRQ -> nvic@25
+    TRGO -> adc1@9
     // CONSIDER:TRGO2: Timer1 has tim1_trgo2
 
 // APB1 (D2)
@@ -409,62 +453,66 @@ spi2: SPI.STM32H7_SPI @ sysbus 0x40003800
 // 0x40002400 - 0x400027FF  LPTIM1
 
 // 0x40002000 - 0x400023FF  TIM14
-timer14: Timers.STM32_Timer @ sysbus <0x40002000, +0x400>
+timer14: Timers.STM32_Timer_Fixed @ sysbus <0x40002000, +0x400>
     initialLimit: 0xffff
     frequency: 250000000
     IRQ -> nvic@45
 
 // 0x40001C00 - 0x40001FFF  TIM13
-timer13: Timers.STM32_Timer @ sysbus <0x40001C00, +0x400>
+timer13: Timers.STM32_Timer_Fixed @ sysbus <0x40001C00, +0x400>
     initialLimit: 0xffff
     frequency: 250000000
     IRQ -> nvic@44
 
 // 0x40001800 - 0x40001BFF  TIM12
-timer12: Timers.STM32_Timer @ sysbus <0x40001800, +0x400>
+timer12: Timers.STM32_Timer_Fixed @ sysbus <0x40001800, +0x400>
     initialLimit: 0xffff
     frequency: 250000000
     IRQ -> nvic@43
 
 // 0x40001400 - 0x400017FF  TIM7
-timer7: Timers.STM32_Timer @ sysbus <0x40001400, +0x400>
+timer7: Timers.STM32_Timer_Fixed @ sysbus <0x40001400, +0x400>
     initialLimit: 0xffff
     frequency: 250000000
     IRQ -> nvic@55
 
 // 0x40001000 - 0x400013FF  TIM6
-timer6: Timers.STM32_Timer @ sysbus <0x40001000, +0x400>
+timer6: Timers.STM32_Timer_Fixed @ sysbus <0x40001000, +0x400>
     initialLimit: 0xffff
     frequency: 250000000
     IRQ -> nvic@54
+    TRGO -> adc1@13
 
 // 0x40000C00 - 0x40000FFF  TIM5
-timer5: Timers.STM32_Timer @ sysbus <0x40000C00, +0x400>
+timer5: Timers.STM32_Timer_Fixed @ sysbus <0x40000C00, +0x400>
     initialLimit: 0xffffffff
     frequency: 250000000
     IRQ -> nvic@50
 
 // 0x40000800 - 0x40000BFF  TIM4
-timer4: Timers.STM32_Timer @ sysbus <0x40000800, +0x400>
+timer4: Timers.STM32_Timer_Fixed @ sysbus <0x40000800, +0x400>
     initialLimit: 0xffff
     frequency: 250000000
     IRQ -> nvic@30
+    TRGO -> adc1@12
     0 -> gpioPortB#6@2 | gpioPortD#12@2
     1 -> gpioPortB#7@2 | gpioPortD#13@2
     2 -> gpioPortB#8@2 | gpioPortD#14@2
     3 -> gpioPortB#9@2 | gpioPortD#15@2
 
 // 0x40000400 - 0x400007FF  TIM3
-timer3: Timers.STM32_Timer @ sysbus <0x40000400, +0x400>
+timer3: Timers.STM32_Timer_Fixed @ sysbus <0x40000400, +0x400>
     initialLimit: 0xffff
     frequency: 60000000
     IRQ -> nvic@29
+    TRGO -> adc1@4
 
 // 0x40000000 - 0x400003FF  TIM2
-timer2: Timers.STM32_Timer @ sysbus <0x40000000, +0x400>
+timer2: Timers.STM32_Timer_Fixed @ sysbus <0x40000000, +0x400>
     initialLimit: 0xffffffff
     frequency: 250000000
     IRQ -> nvic@28
+    TRGO -> adc1@11
 
 sysbus:
     init:

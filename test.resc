@@ -7,7 +7,17 @@ mach create $name
 
 path add $ORIGIN
 
+include @platforms/peripherals/STM32H7_PWR.cs
+include @platforms/peripherals/STM32H7_ADC.cs
+include @platforms/peripherals/STM32H7_DMAMUX.cs
+include @platforms/peripherals/STM32DMA_Fixed.cs
+include @platforms/peripherals/STM32_Timer_Fixed.cs
+
 machine LoadPlatformDescription $ORIGIN/platforms/boards/nucleo144_stm32h723.repl
+
+: Temporary workaround to set LDORDY for ADC1/2 since model
+: initialises to 0 currently:
+adc1 WriteDoubleWord 0x00 0x00001000
 
 $logfile ?= $ORIGIN/artifacts/renode.log
 
